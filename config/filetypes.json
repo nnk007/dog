@@ -1,0 +1,22 @@
+{
+    "rar":"archive",
+    "7z":"archive",
+    "gz":"archive",
+    "zip":"archive",
+    "mkv":"video",
+    "mp4":"video",
+    "mp3":"audio" ,
+    "exe":"install",
+    "jar":"app",
+    "iso":"app",
+    "ini":"text",
+    "txt":"text",
+    "png":"image",
+    "webp":"image",
+    "jpeg":"image",
+    "jpg":"image",
+    "dll":"lib",
+    "js":"lib",
+    "bin":"lib",
+    "cmd":"app"
+}
