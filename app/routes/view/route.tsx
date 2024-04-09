@@ -12,9 +12,9 @@ type File = {
     path: string
 };
 
-const folder = process.env["DATA_FOLDER"] ? path.resolve(process.env["DATA_FOLDER"]) : path.resolve(process.argv[1].split('/').slice(0, -1).join("/"));
 export async function action({ request }: ActionFunctionArgs) {
     let _path = new URL(request.url).searchParams.has("path") ? new URL(request.url).searchParams.get("path")! : '/';
+    const folder = process.env["DATA_FOLDER"] ? path.resolve(process.env["DATA_FOLDER"]) : path.resolve(process.argv[1].split('/').slice(0, -1).join("/"));
     if (path.join(folder, _path).length < folder.length) _path = "/";
     const currentDirectoryPath = path.join(folder, _path);
     try {
@@ -26,6 +26,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 export async function loader({ params, request }: LoaderFunctionArgs) {
     let _path = new URL(request.url).searchParams.has("path") ? new URL(request.url).searchParams.get("path")! : '/';
+    const folder = process.env["DATA_FOLDER"] ? path.resolve(process.env["DATA_FOLDER"]) : path.resolve(process.argv[1].split('/').slice(0, -1).join("/"));
     if (path.join(folder, _path).length < folder.length) _path = "/";
     const currentDirectoryPath = path.join(folder, _path);
     if (!folder) return json([]);
