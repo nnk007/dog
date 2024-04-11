@@ -1,10 +1,10 @@
 import { ActionFunctionArgs, LoaderFunctionArgs, json, redirect, redirectDocument } from "@remix-run/node";
-import { Link, useFetcher, useHref, useLoaderData, useLocation, useMatches, useRouteLoaderData, useSearchParams } from "@remix-run/react"
+import { Link, useFetcher, useHref, useLoaderData, useLocation, useMatches, useNavigate, useRouteLoaderData, useSearchParams } from "@remix-run/react"
 import { createContext, useContext, useEffect, useState } from "react";
 
 import path from "path";
 import fs from "fs";
-import { FileType } from "config/FileType";
+import { FileType, map as getfileTypes } from "config/FileType";
 
 type File = {
     type: FileType,
@@ -14,38 +14,29 @@ type File = {
 
 export async function action({ request }: ActionFunctionArgs) {
     let _path = new URL(request.url).searchParams.has("path") ? new URL(request.url).searchParams.get("path")! : '/';
-    const folder = process.env["DATA_FOLDER"] ? path.resolve(process.env["DATA_FOLDER"]) : path.resolve(process.argv[1].split('/').slice(0, -1).join("/"));
+    const folder = path.resolve(process.env["DATA_DIR"]!);
     if (path.join(folder, _path).length < folder.length) _path = "/";
     const currentDirectoryPath = path.join(folder, _path);
     try {
         const stat = await fs.promises.stat(currentDirectoryPath);
         // if(stat.isDirectory())
+            return redirectDocument("/file?path=" + _path);
     } catch (err) {
     }
-    return redirectDocument("/file?path=" + _path);
 }
 export async function loader({ params, request }: LoaderFunctionArgs) {
-    let _path = new URL(request.url).searchParams.has("path") ? new URL(request.url).searchParams.get("path")! : '/';
-    const folder = process.env["DATA_FOLDER"] ? path.resolve(process.env["DATA_FOLDER"]) : path.resolve(process.argv[1].split('/').slice(0, -1).join("/"));
-    if (path.join(folder, _path).length < folder.length) _path = "/";
-    const currentDirectoryPath = path.join(folder, _path);
+    const url = new URL(request.url);
+    const sp = url.searchParams;
+    if(!sp.has("path")) return redirect("/view?path=");
+    let base64_path = sp.get("path")!
+    let decoded_path = decodeURIComponent(base64_path);
+    const folder = path.resolve(process.env["DATA_DIR"]!);
+    if (path.join(folder, decoded_path).length < folder.length) decoded_path = "/";
+    const currentDirectoryPath = path.join(folder, decoded_path);
+    console.log("CDP:",currentDirectoryPath);
     if (!folder) return json([]);
     /*  */
-    let fileTypes: Map<string, FileType>;
-    try {
-
-        const _ft = await fs.promises.readFile("./config/filetypes.json", "utf8");
-        const ft = Object.entries(JSON.parse(_ft)).map((_p) => {
-            const key = _p[0] as string;
-            const val = _p[1] as string;
-            //@ts-expect-error
-            const p: [string, FileType] = [key, FileType[val]];
-            return p;
-        });
-        fileTypes = new Map<string, FileType>(ft ? ft : []);
-    } catch (err) {
-        fileTypes = new Map<string, FileType>([]);
-    }
+    const fileTypes = await getfileTypes();
     /*  */
     const stat = await fs.promises.stat(currentDirectoryPath)
     if (stat.isDirectory()) {
@@ -68,7 +59,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
             return f;
         })
         return json(m);
-    } else return redirect("/file?path=" + _path);
+    } else return redirect("/file?path=" + encodeURIComponent(decoded_path));
 }
 interface IThemeContext {
     icons: Map<FileType,string>
@@ -87,9 +78,6 @@ export default function View() {
            setThemeCtx(_p=>{return {..._p,icons:icons}});
         })()
     },[])
-    useEffect(() => {
-        console.log(files);
-    }, [files])
     return (
         <div className="bg-black h-full w-full p-4 flex flex-col gap-2 font-mono">
             <nav></nav>
@@ -105,35 +93,36 @@ export default function View() {
 function FileView({ files, root }: { files: File[], root: boolean }) {
     const [searchParams, setSearchParams] = useSearchParams();
     const { pathname } = useLocation();
-    const fetcher = useFetcher();
+    const navigate = useNavigate();
     return (
         <div className="flex flex-col w-full h-full p-2 rounded-md bg-white/5 text-white divide-y-2">
             <div className="text-xl">Files:</div>
             <ul className="text-lg flex flex-col gap-1 overflow-y-scroll h-full pr-2">
                 {!root && <FileListRow file={{ name: "..", path: "..", type: FileType.folder }} onClick={() => {
-                    setSearchParams(_prev => {
-                        _prev.set("path", _prev.get("path")!.split("/").slice(0, -1).join("/"));
-                        return _prev;
-                    })
+                    navigate("/view?path="+encodeURIComponent(decodeURIComponent(searchParams.get("path")!).split("/").slice(0, -1).join("/")))
                 }} />}
                 {files.map((file, i) => {
-                    return <li key={file.name} className="">
-                        <FileListRow file={file} onClick={(() => {
-                            if (file.type == FileType.folder) return () => {
-                                setSearchParams(_prev => {
-                                    if (!_prev.has("path")) _prev.set("path", "");
-                                    _prev.set("path", _prev.get("path")!.split("/").concat(file.name).join("/"));
-                                    return _prev;
-                                });
-                            };
-                            return () => {
-                                const newSP = searchParams.get("path")!.split("/").concat(file.name).join("/");
-                                fetcher.submit("", { method: "POST", action: `${pathname}?path=${newSP}` });
-                            }
-                        })()}
-                            download={file.type !== FileType.folder}
-                            view={file.type == FileType.audio || file.type == FileType.video} />
-                    </li>
+                    const newSP = decodeURIComponent(searchParams.get("path")!).split("/").concat(file.name).join("/");
+                    //if folder update view
+                    if (file.type == FileType.folder)
+                        return <li key={file.name} className="">
+                            <FileListRow file={file} onClick={() => {
+                                navigate(`/view?path=${encodeURIComponent(newSP)}`);
+                            }}/>
+                        </li>
+                    //else redirect to view
+                    else
+                        return <li key={file.name} className="">
+                            <FileListRow file={file} onClick={() => {
+                                navigate(`/open?path=${encodeURIComponent(newSP)}`);
+                            }}
+                                onDownload={() => {
+                                    navigate(`/download?path=${encodeURIComponent(newSP)}`)
+                                }}
+                                onOpen={() => {
+                                    navigate(`/open?path=${encodeURIComponent(newSP)}`);
+                                }} />
+                        </li>
                 })}
             </ul>
         </div>
@@ -141,7 +130,7 @@ function FileView({ files, root }: { files: File[], root: boolean }) {
 }
 
 
-function FileListRow({ file, onClick: handleClick, download, view }: { file: File, download?: boolean, view?: boolean, onClick?: () => void }) {
+function FileListRow({ file, onClick: handleClick, onDownload:handleDownload, onOpen:handleOpen }: { file: File, onDownload?: ()=>void, onOpen?: ()=>void, onClick?: () => void }) {
     const entries = useRouteLoaderData<string>("routes/api.file_icons/route");
     const [hover, setHover] = useState(false);
     const {icons} = useContext(ThemeContext);
@@ -169,8 +158,8 @@ function FileListRow({ file, onClick: handleClick, download, view }: { file: Fil
                 >{file.name}</div>
             </div>
             <div className="flex gap-2 items-center">
-                {view && <Link to={""} className="px-4 py-1 text-white/50 hover:text-white/100 transition-all">View</Link>}
-                {download && <Link to={""} className="px-4 py-1 text-white/50 hover:text-white/100 transition-all">Download</Link>}
+                {handleOpen && <div className="px-4 py-1 text-white/50 hover:text-white/100 transition-all" onClick={()=>{handleOpen()}}>Open</div>}
+                {handleDownload && <div className="px-4 py-1 text-white/50 hover:text-white/100 transition-all" onClick={()=>{handleDownload()}}>Download</div>}
             </div>
         </div>
     )

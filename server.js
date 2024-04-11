@@ -13,6 +13,8 @@ import tailwind from "tailwindcss";
 // import morgan from "morgan";
 // import compression from "compression";
 
+process.env["DATA_DIR"] = process.env["DATA_DIR"] || path.resolve(process.argv[1].split('/').slice(0, -1).join("/"));
+
 // This installs globals such as "fetch", "Response", "Request" and "Headers".
 installGlobals();
 
