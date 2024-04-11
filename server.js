@@ -14,7 +14,7 @@ import tailwind from "tailwindcss";
 // import compression from "compression";
 
 process.env["DATA_DIR"] = process.env["DATA_DIR"] || path.resolve(process.argv[1].split('/').slice(0, -1).join("/"));
-
+const data_dir = process.env["DATA_DIR"];
 // This installs globals such as "fetch", "Response", "Request" and "Headers".
 installGlobals();
 
@@ -58,15 +58,17 @@ app.use(express.static("public", { maxAge: "1h" }));
 
 //handle route with express
 app.use("/file",async (req,res)=>{
-  let _path = new URL(req.url,`http://${req.headers.host}`).searchParams.has("path") ? new URL(req.url,`http://${req.headers.host}`).searchParams.get("path") : '/';
+  const url =  new URL(req.url,`http://${req.headers.host}`);
+  if(!url.searchParams.has("path")) return res.sendStatus(400);
+  let _path =  url.searchParams.get("path");
   const name = _path.split("/").pop();
-  const __dirname = path.resolve(process.argv[1].split('/').slice(0, -1).join("/"));
-  const folder = process.env["DATA_FOLDER"] ? path.resolve(process.env["DATA_FOLDER"]) : __dirname;
-  if (path.join(folder, _path).length < folder.length) _path = "/";
+  const folder = path.resolve(data_dir);
+  const decoded_path = decodeURIComponent(_path);
+  if (path.join(folder, decoded_path).length < folder.length) _path = "/";
   try {
-      const stat = await fs.promises.stat(path.join(folder, _path));
+      const stat = await fs.promises.stat(path.join(folder, decoded_path));
       if(stat.isDirectory()) return json([]); //should zip up the folder and offer download;
-      const rs = fs.createReadStream(path.join(folder, _path));
+      const rs = fs.createReadStream(path.join(folder, decoded_path));
       res.setHeader("Content-Disposition","attachment; filename="+(name));
       res.setHeader("Content-Length",stat.size);
       rs.pipe(res);

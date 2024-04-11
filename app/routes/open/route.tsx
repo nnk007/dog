@@ -57,7 +57,7 @@ export const meta: MetaFunction = () => {
 
 export default function Route(){
     return (
-        <div className="w-full h-full bg-black text-white flex flex-col font-mono p-2 divide-y">
+        <div className="w-full h-screen bg-black text-white flex flex-col font-mono p-2 divide-y">
             <nav className="text-xl flex flex-row justify-between items-center">
                 <div>#/open</div>
                 <Link to="/view" className="hover:underline text-white/50 hover:text-white">back to /view</Link>
