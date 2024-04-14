@@ -1,8 +1,8 @@
+import 'dotenv/config';
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import * as path from "node:path";
 import * as url from "node:url";
-
 import { createRequestHandler } from "@remix-run/express";
 import { broadcastDevReady, installGlobals } from "@remix-run/node";
 import express from "express";
