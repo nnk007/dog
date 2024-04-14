@@ -74,7 +74,8 @@ app.use("/file",async (req,res)=>{
       res.setHeader("Content-Length",stat.size);
       rs.pipe(res);
   } catch(err){
-      throw err;
+      if(err.code)
+      console.error(err.code,err.message);
   }
 })
 
