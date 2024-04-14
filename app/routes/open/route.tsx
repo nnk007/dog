@@ -1,8 +1,7 @@
-import { LoaderFunctionArgs, json, redirect } from "@remix-run/node";
-import { Link, MetaFunction, Outlet, useRouteError } from "@remix-run/react";
+import { LoaderFunctionArgs, redirect } from "@remix-run/node";
+import { Link, MetaFunction, Outlet, useRouteError, useSearchParams } from "@remix-run/react";
 import fs from "fs";
 import path from "path";
-import { FileType } from "config/FileType";
 import { map as ft2route} from "./fileType2route";
 import { map as getFileTypes } from "config/FileType";
 export function action(){
@@ -56,10 +55,15 @@ export const meta: MetaFunction = () => {
 
 
 export default function Route(){
+    const [sp] = useSearchParams();
+    const _path = sp.get("path");
     return (
         <div className="w-full h-screen bg-black text-white flex flex-col font-mono p-2 divide-y">
             <nav className="text-xl flex flex-row justify-between items-center">
+                <div className="flex gap-2">
                 <div>#/open</div>
+                {_path && <Link to={`/download?path=${_path}`} className="hover:underline text-white/50 hover:text-white">/download</Link>}
+                </div>
                 <Link to="/view" className="hover:underline text-white/50 hover:text-white">back to /view</Link>
             </nav>
             <main className="w-full h-full">
